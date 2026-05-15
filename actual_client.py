@@ -17,12 +17,13 @@ from typing import Optional
 from actual import Actual
 from actual.queries import (
     create_account,
+    create_payee,
     create_transaction,
     create_transfer,
     get_account,
     get_accounts,
     get_payee,
-    create_payee,
+    get_ruleset,
 )
 
 logger = logging.getLogger(__name__)
@@ -229,6 +230,8 @@ class ActualClient:
         committed = 0
 
         with self._open() as actual:
+            ruleset = get_ruleset(actual.session)
+
             for tx in transactions:
                 if imported - committed >= COMMIT_BATCH_SIZE:
                     self._commit(actual, imported - committed)
@@ -287,7 +290,7 @@ class ActualClient:
                         payee = _get_or_create_payee(actual.session, tx["payee_name"])
 
                         # Positional call — first param is 's' (not 'session')
-                        create_transaction(
+                        t = create_transaction(
                             actual.session,       # s
                             tx["date"],           # date
                             account,              # account
@@ -302,6 +305,9 @@ class ActualClient:
                         logger.debug(
                             f"Queued: {imported_id} | {tx['payee_name']} | {tx['amount']}"
                         )
+
+                        # Run rules on the created transaction
+                        ruleset.run(t)
 
                 except Exception as e:
                     logger.error(
