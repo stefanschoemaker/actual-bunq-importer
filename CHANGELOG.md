@@ -19,6 +19,11 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   omitted`) when `config.json` was created via the web UI, which doesn't write `actual.cert`
 - Syncs crashed with `KeyError: 'state_file'` for the same reason; it now defaults to
   `data/sync_state.json`
+- Full syncs of accounts with many payments failed with `413 Payload Too Large`: all
+  transactions went to Actual in one sync request (~1.25 MB per 1000), over the server's
+  20 MB default. They are now committed in batches of 1000
+- After a failed commit, the local budget copy kept the unsent transactions, so the next run
+  skipped them as duplicates and they never reached Actual. The copy is now discarded on failure
 - Changing the schedule or the sync toggle in the web UI had no effect until a restart: `pkill`
   isn't in the image, and its SIGHUP would have stopped supercronic. It now gets SIGUSR2 (reload)
 

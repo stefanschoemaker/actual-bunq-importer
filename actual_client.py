@@ -11,6 +11,7 @@ Key concepts:
 """
 
 import logging
+from pathlib import Path
 from typing import Optional
 
 from actual import Actual
@@ -25,6 +26,10 @@ from actual.queries import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Actual rejects sync requests larger than ACTUAL_UPLOAD_FILE_SYNC_SIZE_LIMIT_MB
+# (20 MB by default), which a full sync of a busy account easily exceeds.
+COMMIT_BATCH_SIZE = 1000
 
 
 class ActualClient:
@@ -217,9 +222,13 @@ class ActualClient:
         imported = 0
         skipped  = 0
         errors   = 0
+        committed = 0
 
         with self._open() as actual:
             for tx in transactions:
+                if imported - committed >= COMMIT_BATCH_SIZE:
+                    self._commit(actual, imported - committed)
+                    committed = imported
                 try:
                     imported_id = tx["imported_id"]
 
@@ -296,12 +305,33 @@ class ActualClient:
                     )
                     errors += 1
 
-            # Sync all queued changes to the Actual server in one batch
-            if imported > 0:
-                actual.commit()
-                logger.info(f"Committed {imported} transaction(s) to Actual server.")
+            # Sync the remaining queued changes to the Actual server
+            if imported > committed:
+                self._commit(actual, imported - committed)
 
         return {"imported": imported, "skipped": skipped, "errors": errors}
+
+    def _commit(self, actual: Actual, count: int) -> None:
+        """Sync queued changes to the Actual server.
+
+        actualpy writes them to the local copy in data_dir before sending. If
+        the sync fails, that copy holds transactions the server never got, and
+        the duplicate check would skip them on the next run, so drop it and let
+        the next run download the budget again.
+        """
+        try:
+            actual.commit()
+        except Exception:
+            self._discard_local_copy()
+            raise
+        logger.info(f"Committed {count} transaction(s) to Actual server.")
+
+    def _discard_local_copy(self) -> None:
+        if not self.data_dir:
+            return  # actualpy used a temporary directory
+        for name in ("db.sqlite", "metadata.json"):
+            (Path(self.data_dir) / name).unlink(missing_ok=True)
+        logger.warning("Sync to Actual failed; discarded the local budget copy so the next run downloads it again.")
 
     def set_opening_balance(
         self,
