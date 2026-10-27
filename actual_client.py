@@ -142,7 +142,7 @@ class ActualClient:
             Example: {"DE96370190001010428851": "ae5c5577-3fe3-...", ...}
         """
         import re
-        from actual.database import Notes
+        from actual.database import Accounts, Notes
 
         # Regex for a bare IBAN (2 letters + up to 32 alphanumeric chars)
         IBAN_RE = re.compile(r'^[A-Z]{2}[0-9A-Z]{10,30}$')
@@ -155,8 +155,12 @@ class ActualClient:
                 .filter(Notes.id.like("account-%"))
                 .all()
             )
+            # Notes outlive deleted accounts; transfers to those must not be detected
+            live = {a.id for a in actual.session.query(Accounts).filter(Accounts.tombstone == 0)}
             for note_row in notes:
                 account_uuid = note_row.id.removeprefix("account-")
+                if account_uuid not in live:
+                    continue
                 for line in (note_row.note or "").splitlines():
                     line = line.strip()
                     if line.startswith("IBAN:"):
@@ -368,10 +372,16 @@ class ActualClient:
             imported_id = f"opening-balance-{actual_account_id}-{since_date}"
 
             with self._open() as actual:
-                # Remove any previous opening balance so it doesn't skew our sum
-                actual.session.execute(_text(
-                    "DELETE FROM transactions WHERE financial_id = :fid"
-                ), {"fid": imported_id})
+                # Remove any previous opening balance so it doesn't skew our sum.
+                # delete() marks it as deleted and syncs that on commit; a raw SQL
+                # DELETE only changed the local copy, so the server kept the old one
+                # and every re-run added another opening balance.
+                from actual.database import Transactions
+                for old in actual.session.query(Transactions).filter(
+                    Transactions.financial_id == imported_id, Transactions.tombstone == 0
+                ):
+                    old.delete()
+                actual.session.flush()
 
                 # Sum all transactions in Actual for this account (after import)
                 row = actual.session.execute(_text("""
@@ -379,6 +389,7 @@ class ActualClient:
                     FROM transactions
                     WHERE acct      = :acct
                       AND tombstone = 0
+                      AND isParent  = 0
                 """), {"acct": actual_account_id}).fetchone()
 
                 actual_sum_cents = row[0] if row else 0

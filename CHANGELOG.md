@@ -26,6 +26,10 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   skipped them as duplicates and they never reached Actual. The copy is now discarded on failure
 - Payments whose counterparty is the account itself (e.g. investment dividends) were skipped as
   the incoming side of an internal transfer that has no other side; they are now imported
+- Every full sync with `--since` added another opening balance: the previous one was removed with
+  a raw SQL `DELETE` that only changed the local budget copy, never the server. Split transactions
+  were also counted twice (parent and children) in the balance sum
+- Transfer detection used IBAN notes of deleted accounts
 - Changing the schedule or the sync toggle in the web UI had no effect until a restart: `pkill`
   isn't in the image, and its SIGHUP would have stopped supercronic. It now gets SIGUSR2 (reload)
 
