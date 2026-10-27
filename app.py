@@ -304,10 +304,27 @@ def write_crontab(schedule: str, enabled: bool = True) -> None:
     else:
         CRONTAB_FILE.write_text("# sync disabled\n")
         logger.info("Crontab disabled — supercronic will idle")
+    _reload_supercronic()
+
+
+def _reload_supercronic() -> None:
+    """Send SIGUSR2 to supercronic so it re-reads the crontab.
+
+    SIGUSR2 is supercronic's reload signal (SIGHUP would terminate it). The
+    process is looked up via /proc because the slim image has no pkill.
+    """
     try:
-        subprocess.run(["pkill", "-HUP", "supercronic"], capture_output=True)
-    except Exception:
-        pass
+        for proc in Path("/proc").iterdir():
+            if not proc.name.isdigit():
+                continue
+            try:
+                exe = (proc / "cmdline").read_bytes().split(b"\0", 1)[0]
+            except OSError:
+                continue
+            if exe.endswith(b"/supercronic"):
+                os.kill(int(proc.name), signal.SIGUSR2)
+    except OSError:
+        pass  # no /proc (not running in the container)
 
 
 # ---------------------------------------------------------------------------

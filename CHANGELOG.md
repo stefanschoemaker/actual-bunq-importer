@@ -14,6 +14,12 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `docker-compose.yml`: removed the hard-coded DNS server, `TZ` is configurable, the
   templates live-edit mount is commented out (development only)
 
+### Fixed
+- `--init-accounts` and syncs crashed (`TypeError: cafile, capath and cadata cannot be all
+  omitted`) when `config.json` was created via the web UI, which doesn't write `actual.cert`
+- Changing the schedule or the sync toggle in the web UI had no effect until a restart: `pkill`
+  isn't in the image, and its SIGHUP would have stopped supercronic. It now gets SIGUSR2 (reload)
+
 ## [0.1.1] - 2026-03-26
 ### Fixed
 - Incremental sync blocked by since_date from config

@@ -82,7 +82,8 @@ def _make_actual_client(config):
         base_url=cfg["url"],
         password=cfg["password"],
         budget_name=cfg["budget_name"],
-        cert=cfg.get("cert"),
+        # Same default as the web UI, which doesn't write "cert"; actualpy fails on None
+        cert=cfg.get("cert", False),
         encryption_password=cfg.get("encryption_password"),
         data_dir=cfg.get("data_dir"),
     )
