@@ -320,7 +320,8 @@ def run_sync(config, config_path, full_sync=False, since_date=None):
         sys.exit(1)
 
     actual = _make_actual_client(config)
-    state = SyncState(config["sync"]["state_file"])
+    # The web UI doesn't write state_file; fall back to the config.example.json default
+    state = SyncState(config["sync"].get("state_file", "data/sync_state.json"))
     session_token, user_id = bunq_client.create_session(config)
 
     account_map = build_account_map(

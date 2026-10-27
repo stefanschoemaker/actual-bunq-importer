@@ -17,6 +17,8 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Fixed
 - `--init-accounts` and syncs crashed (`TypeError: cafile, capath and cadata cannot be all
   omitted`) when `config.json` was created via the web UI, which doesn't write `actual.cert`
+- Syncs crashed with `KeyError: 'state_file'` for the same reason; it now defaults to
+  `data/sync_state.json`
 - Changing the schedule or the sync toggle in the web UI had no effect until a restart: `pkill`
   isn't in the image, and its SIGHUP would have stopped supercronic. It now gets SIGUSR2 (reload)
 
