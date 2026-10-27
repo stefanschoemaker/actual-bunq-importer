@@ -24,6 +24,8 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   20 MB default. They are now committed in batches of 1000
 - After a failed commit, the local budget copy kept the unsent transactions, so the next run
   skipped them as duplicates and they never reached Actual. The copy is now discarded on failure
+- Payments whose counterparty is the account itself (e.g. investment dividends) were skipped as
+  the incoming side of an internal transfer that has no other side; they are now imported
 - Changing the schedule or the sync toggle in the web UI had no effect until a restart: `pkill`
   isn't in the image, and its SIGHUP would have stopped supercronic. It now gets SIGUSR2 (reload)
 
