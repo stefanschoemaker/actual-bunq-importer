@@ -10,15 +10,17 @@ services:
       - ./config:/app/config
       - ./data:/app/data
       - ./logs:/app/logs
-      # Mount templates for live editing without rebuild
-      - ./templates:/app/templates
+      # Development only: mount templates for live editing without rebuild
+      # - ./templates:/app/templates
     environment:
-      - TZ=Europe/Berlin
+      - TZ=${TZ:-Europe/Berlin}
+      # Protect the web UI with HTTP basic auth (strongly recommended).
+      # Leave both empty to disable authentication.
+      - WEB_USERNAME=${WEB_USERNAME:-}
+      - WEB_PASSWORD=${WEB_PASSWORD:-}
     extra_hosts:
+      # lets the container reach an Actual server running on the Docker host
       - "host.docker.internal:host-gateway"
-    dns:
-      - 10.10.4.1
-      - 1.1.1.1
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/api/status"]
       interval: 30s

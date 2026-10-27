@@ -143,6 +143,26 @@ python sync.py --config /path/to/config.json
 python sync.py -v
 ```
 
+## Docker
+
+The image runs the web UI on port 8080 and the sync schedule (supercronic) in one container.
+It builds on amd64 and arm64 (e.g. a Raspberry Pi 4/5 with a 64-bit OS).
+
+```bash
+cp config/config.example.json config/config.json   # or configure everything via the web UI
+WEB_USERNAME=admin WEB_PASSWORD='choose-a-strong-password' docker compose up -d --build
+```
+
+Then open `http://<host>:8080`. `config/`, `data/` and `logs/` are mounted from the host, so
+secrets and sync state stay outside the image.
+
+| Variable | Description |
+|---|---|
+| `WEB_USERNAME`, `WEB_PASSWORD` | Protect the web UI with HTTP basic auth. Strongly recommended: the UI can edit the config (including the bunq API key) and start syncs. Leave both empty to disable. `/api/status` stays open for the container healthcheck. |
+| `TZ` | Container timezone (default `Europe/Berlin`) |
+
+If Actual Budget runs on the same Docker host, use `http://host.docker.internal:5006` as `actual.url`.
+
 ## Cron setup
 
 ```bash
