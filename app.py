@@ -18,6 +18,7 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from typing import Optional
+from urllib.parse import urlsplit
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, Response
@@ -90,6 +91,35 @@ async def basic_auth(request: Request, call_next):
         status_code=401,
         headers={"WWW-Authenticate": 'Basic realm="bunq-actual-sync", charset="UTF-8"'},
     )
+
+
+# ---------------------------------------------------------------------------
+# Cross-site request protection
+# ---------------------------------------------------------------------------
+# Browsers resend cached basic-auth credentials on requests started by other
+# sites, and a page on the internet can POST to a LAN address, so requests
+# that change state must come from the web UI's own origin.
+
+SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
+
+
+@app.middleware("http")
+async def reject_cross_site(request: Request, call_next):
+    if request.method not in SAFE_METHODS:
+        # Sec-Fetch-Site is only sent over HTTPS and to localhost; plain-HTTP
+        # LAN setups fall back to comparing Origin with the requested host.
+        fetch_site = request.headers.get("sec-fetch-site")
+        origin = request.headers.get("origin")
+        if fetch_site is not None:
+            allowed = fetch_site in ("same-origin", "none")
+        elif origin is not None:
+            hosts = {request.headers.get("host"), request.headers.get("x-forwarded-host")}
+            allowed = urlsplit(origin).netloc in hosts - {None}
+        else:
+            allowed = True  # not sent by a browser (curl, scripts)
+        if not allowed:
+            return Response("Cross-site request rejected", status_code=403)
+    return await call_next(request)
 
 
 # Build a custom Jinja2 Environment with cache disabled.

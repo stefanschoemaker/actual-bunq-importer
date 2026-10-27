@@ -4,6 +4,8 @@ services:
     container_name: bunq-actual-sync
     restart: unless-stopped
     ports:
+      # Plain HTTP: use "127.0.0.1:8080:8080" (Docker host only) or an HTTPS
+      # reverse proxy if the network between you and this host isn't trusted.
       - "8080:8080"
     volumes:
       # Persist secrets and state outside the image

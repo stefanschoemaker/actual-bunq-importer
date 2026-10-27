@@ -7,6 +7,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Added
 - Docker image builds on arm64 as well as amd64 (supercronic binary per platform, checksum-verified)
 - Optional HTTP basic auth for the web UI via `WEB_USERNAME` / `WEB_PASSWORD`
+- Cross-site request protection: state-changing requests from other origins are rejected (403)
 - `.dockerignore` so `config/config.json`, data and logs are never copied into the image
 
 ### Changed
