@@ -33,6 +33,8 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Incremental syncs paged through the whole payment history as soon as there were new payments
   (bunq ignores `newer_id` next to `older_id`), until bunq answered 429 Too Many Requests. Payments
   are now fetched newest first and paging stops at the first known payment
+- The sync cursor never advanced for an account whose new payments were all incoming transfer
+  sides (booked by the other account), so those were fetched again on every run
 - bunq GET requests are spaced to stay under the rate limit (3 per 3 seconds) and retried on 429,
   5xx and connection errors
 - Changing the schedule or the sync toggle in the web UI had no effect until a restart: `pkill`
