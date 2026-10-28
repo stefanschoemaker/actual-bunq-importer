@@ -30,6 +30,11 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   a raw SQL `DELETE` that only changed the local budget copy, never the server. Split transactions
   were also counted twice (parent and children) in the balance sum
 - Transfer detection used IBAN notes of deleted accounts
+- Incremental syncs paged through the whole payment history as soon as there were new payments
+  (bunq ignores `newer_id` next to `older_id`), until bunq answered 429 Too Many Requests. Payments
+  are now fetched newest first and paging stops at the first known payment
+- bunq GET requests are spaced to stay under the rate limit (3 per 3 seconds) and retried on 429,
+  5xx and connection errors
 - Changing the schedule or the sync toggle in the web UI had no effect until a restart: `pkill`
   isn't in the image, and its SIGHUP would have stopped supercronic. It now gets SIGUSR2 (reload)
 
